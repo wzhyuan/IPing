@@ -1,0 +1,78 @@
+﻿名称：报文延时软件部署说明书
+版本：V1.0
+日期：2013/05/23
+作者：世纪互联 开发部 吴志远
+
+一：确保LINUX服务器内核在2.6及以上。
+二：确保服务器各个出端口网卡是可用的。
+三：确保服务器已经安装防火墙以下支持包：
+	libnetfilter_conntrack.x86_64
+	libnetfilter_queue-1.0.0-1.el6.x86_64
+	libnetfilter_queue-debuginfo-1.0.0-1.el6.x86_64
+	libnfnetlink-1.0.0-1.el6.x86_64
+
+
+三：执行类/配置类文件说明
+	1：delay        延时程序的主执行程序
+	2: Fping.sh     启动主程序的执行脚本，请在该文件的第三行第31列处，也就是./delay 后面指定默认延时时间。
+	3：restart.sh   重新启动Fping服务的执行脚本，如果之前已经运行，则重新启动，之前没有运行，则启动。
+	
+	4：iplist.txt   制定延时的配置文档，按照ip地址（空格）掩码（空格）延时时间（单位ms）填写。每行一条。
+					比如：192.168.1.0 24 100  ，意思是以192.168.1.0掩码24位网段为目的ip的报文同一延时100ms。
+	说明：以上文件请放在/home/Fping文件夹下面，如需更改，则请将相关文件中的路径都做更改。
+	
+四：iptables配置：
+
+	1:ICMP 包：
+	首先对所有ICMP报文做DNAT转换
+	iptables -t nat -A PREROUTING -i eth0 -p icmp -j DNAT --to-destination /*本机地址*/
+	在命令行界面下输入以下两句话：
+	iptables -t mangle -A PREROUTING -p icmp -i p1p1 -j MARK --set-mark 0x1
+
+	iptables -t mangle -A PREROUTING -m mark --mark 0x1 -j NFQUEUE --queue-num 1
+	
+	2：TCPING包：
+	首先对所有TCP报文做DNAT转换
+	iptables -t nat -A PREROUTING -i eth0 -p tcp -j DNAT --to-destination /*本机地址*/
+	在命令行界面下输入第一句话：
+	iptables -t mangle -A PREROUTING -p tcp -i eth0 -j MARK --set-mark 0x1
+	（运行./delay之后！）输入第二句话
+	iptables -t mangle -A PREROUTING -m mark --mark 0x1 -j NFQUEUE --queue-num 1
+	
+	
+	
+	注意事项：1：第一句的第9个关键字eth0，需要使用者判断目的IP属于哪块网卡，在哪块上面就输入相应的编号。
+				 比如目的地址在eth1上则替换成eth1。默认是eth0。
+			  2：当需要支持tcping时，特别注意执行第一句iptables语句后，一定要保证执行程序delay已经在执行，
+				 然后才能输入第二句iptables，否则会出现严重后果！
+	
+五：运行程序
+	1：检查执行类文件是否有可执行权限，如果没有则执行 chmod +x filename ，为其加上可执行权限。
+	
+	2： 以上检查无误，如需设定开机自启动，直接看第六步。
+	    如采用手动启动方式，运行./Fping,如果程序已经运行，则运行./restart.sh
+		注意，某些情况下，运行restart.sh后，30s内可能看不到进程启动，但超过30s仍然看不到则认为是启动失败。
+	
+	3：在测试发起端执行：ping /*目的地址*/  或者 ./tcping /*目的地址*/
+	
+	4: 观察延时是否符合需求
+	
+	5: 重启服务，执行./restart.sh 即可。
+	
+	
+六：设置开机自启动：
+	1：编辑rc.local文件
+	   执行以下语句：
+	   vim /etc/rc.local
+	   进入编辑状态，在文件末行添加以下一行注释和两行语句：
+	   # process for Fping 
+	   cd  /home/Fping
+	   /home/Fping/Fping.sh
+	   
+	2：编辑Fping.sh文件，指定默认延时
+	   将光标移动第2行，第十列也就是./delay 的后面，指定默认延时毫秒数，默认为0，更改即可。
+	   将Fping.sh文件上传到路径/home/Fping下，添加可执行权限：chmod +x Fping.sh
+	   
+	3：下次重新启动机器是就会生效，开机时delay会运行。
+		
+	   以上步骤执行时如有疑问请联系开发部吴志远。谢谢。
