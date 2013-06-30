@@ -11,10 +11,9 @@
 	libnetfilter_queue-debuginfo-1.0.0-1.el6.x86_64
 	libnfnetlink-1.0.0-1.el6.x86_64
 
-
 三：执行类/配置类文件说明
 	1：delay        延时程序的主执行程序
-	2: Fping.sh     启动主程序的执行脚本，请在该文件的第三行第31列处，也就是./delay 后面指定默认延时时间。
+	2: Fping.sh     启动主程序的执行脚本，请在该文件的第三行第31列处，也就是./delay 后面指定默认延时时间段。
 	3：restart.sh   重新启动Fping服务的执行脚本，如果之前已经运行，则重新启动，之前没有运行，则启动。
 	
 	4：iplist.txt   制定延时的配置文档，按照ip地址（空格）掩码（空格）延时时间（单位ms）填写。每行一条。
@@ -25,9 +24,10 @@
 
 	1:ICMP 包：
 	首先对所有ICMP报文做DNAT转换
-	iptables -t nat -A PREROUTING -i eth0 -p icmp -j DNAT --to-destination /*本机地址*/
+	iptables -t nat -A PREROUTING -i em2 -p icmp -j DNAT --to-destination /*本机地址*/
 	在命令行界面下输入以下两句话：
-	iptables -t mangle -A PREROUTING -p icmp -i p1p1 -j MARK --set-mark 0x1
+	
+	iptables -t mangle -A PREROUTING -p icmp -i em2 -j MARK --set-mark 0x1
 
 	iptables -t mangle -A PREROUTING -m mark --mark 0x1 -j NFQUEUE --queue-num 1
 	
@@ -35,8 +35,8 @@
 	首先对所有TCP报文做DNAT转换
 	iptables -t nat -A PREROUTING -i eth0 -p tcp -j DNAT --to-destination /*本机地址*/
 	在命令行界面下输入第一句话：
-	iptables -t mangle -A PREROUTING -p tcp -i eth0 -j MARK --set-mark 0x1
-	（运行./delay之后！）输入第二句话
+	iptables -t mangle -A PREROUTING -p tcp -i n -j MARK --set-mark 0x1
+	（运行delay之后！）输入第二句话
 	iptables -t mangle -A PREROUTING -m mark --mark 0x1 -j NFQUEUE --queue-num 1
 	
 	
@@ -50,7 +50,7 @@
 	1：检查执行类文件是否有可执行权限，如果没有则执行 chmod +x filename ，为其加上可执行权限。
 	
 	2： 以上检查无误，如需设定开机自启动，直接看第六步。
-	    如采用手动启动方式，运行./Fping,如果程序已经运行，则运行./restart.sh
+	    如采用手动启动方式，运行./Fping,如果程序已经运行，重启程序，则运行./restart.sh
 		注意，某些情况下，运行restart.sh后，30s内可能看不到进程启动，但超过30s仍然看不到则认为是启动失败。
 	
 	3：在测试发起端执行：ping /*目的地址*/  或者 ./tcping /*目的地址*/
@@ -67,10 +67,10 @@
 	   进入编辑状态，在文件末行添加以下一行注释和两行语句：
 	   # process for Fping 
 	   cd  /home/Fping
-	   /home/Fping/Fping.sh
+	   /home/Fping/Fping.sh &
 	   
 	2：编辑Fping.sh文件，指定默认延时
-	   将光标移动第2行，第十列也就是./delay 的后面，指定默认延时毫秒数，默认为0，更改即可。
+	   将光标移动第2行，第十列也就是./delay 的后面，指定默认延时时间段毫秒数，最大值和最小值，默认为0-10，更改即可。
 	   将Fping.sh文件上传到路径/home/Fping下，添加可执行权限：chmod +x Fping.sh
 	   
 	3：下次重新启动机器是就会生效，开机时delay会运行。

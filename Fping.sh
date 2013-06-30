@@ -1,2 +1,2 @@
 #!/bin/bash
-./delay 10 &
+./delay 0 10 &

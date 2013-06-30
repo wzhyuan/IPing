@@ -70,6 +70,11 @@ typedef struct
 	
 }packet_info_t;
 
+
+uint32_t mintime = 0;
+uint32_t maxtime = 0;
+uint32_t r = 0;
+	
 /*********************************************************************************
   *Function:  do_delay
   *Description：根据IP地址所在的网段，执行相应的延时，默认15ms
@@ -92,6 +97,12 @@ int  do_delay( uint32_t uiIPaddr )
 		{
 			if( 0 == plist->ftime )
 			{
+				srand((unsigned)time(NULL));
+				r = rand();
+				if(maxtime-mintime == 0)
+				defaultime = mintime;
+				else
+				defaultime = r%(maxtime-mintime) + mintime;
 				usleep(defaultime*1000);
 			}
 			else
@@ -103,6 +114,12 @@ int  do_delay( uint32_t uiIPaddr )
 		
 		plist = plist->next;
 	}
+	srand((unsigned)time(NULL));
+	r = rand();
+	if(maxtime-mintime == 0)
+	defaultime = mintime;
+	else
+	defaultime = r%(maxtime-mintime) +mintime;
 	usleep(defaultime*1000);
 	return -1;
 }
@@ -373,14 +390,14 @@ int main( int argc, char *argv[] )
 	p_IPLIST pDel  = NULL;
 	p_IPLIST ploop = NULL;
 	
-	if(argc != 2)
+	if(argc != 3)
 	{
-		printf("please input ./delay *default delay time(ms)*,example: ./delay 10\n");
+		printf("please input ./delay *default delay time(min ms) time(max ms)  t*,example: ./delay 10 20\n");
 		return 0;
 	}
-	int itime = 0;
-	sscanf(argv[1],"%d",&itime);
-	defaultime = itime;
+	
+	sscanf(argv[1],"%d",&mintime);
+	sscanf(argv[2],"%d",&maxtime);
 	
 	struct nfq_handle *  handler = nfq_open();
 	if (!handler)
@@ -406,7 +423,7 @@ int main( int argc, char *argv[] )
 		cout<<"can not open iplist.txt\n"; 
 		return -1;
 	} 
-	
+
 	while( Fplist >> ipaddr )
 	{
 		Fplist >> mask;
@@ -415,7 +432,7 @@ int main( int argc, char *argv[] )
 		uiRet = Insert_addr( &gHead_Iplist,&gTail_Iplist,uiIP,mask,ftime);
 	}
 	
-		
+
 		
 	struct nfq_q_handle *qh = NULL;
 	qh = nfq_create_queue(handler, i_queue_num, &main_handler, NULL);
@@ -423,7 +440,7 @@ int main( int argc, char *argv[] )
 	{
 		exit(1);
 	}
-	
+
 	if ( nfq_set_mode( qh, NFQNL_COPY_PACKET, 0xffff ) < 0)
 	{
 		exit(1);
@@ -438,7 +455,6 @@ int main( int argc, char *argv[] )
 		
 	char buf[4096] __attribute__ ((aligned));
 	int rv = -1;
-	
 	while ((rv = recv(fd, buf, sizeof(buf), 0)) && rv >= 0)
 	{
 		
@@ -459,7 +475,6 @@ int main( int argc, char *argv[] )
 	
 	nfq_destroy_queue(qh);
 	nfq_close(handler);
-	
+	Fplist.close();
 	return 0;
-	
 }
